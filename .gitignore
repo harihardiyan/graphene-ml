@@ -1,0 +1,21 @@
+# Python junk
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Data & Logs
+data/
+logs/*.log
+plots/*.png
+
+# Model Checkpoints
+*.pth
+*.pt
+
+# IDEs
+.vscode/
+.idea/
+.ipynb_checkpoints/
