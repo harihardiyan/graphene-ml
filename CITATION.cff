@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Hardiyan"
+  given-names: "Hari"
+  email: "lorozloraz@gmail.com"
+title: "Graphene ML: Audit-Pure Continual Learning Framework"
+version: 1.0.0-alpha
+doi: 10.5281/zenodo.18146946
+date-released: 2026-01-04
+url: "https://github.com/harihardiyan/graphene-ml"
