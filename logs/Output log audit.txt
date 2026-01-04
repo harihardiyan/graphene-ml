@@ -1,0 +1,348 @@
+ [   0.05s] Device: cuda
+100%|██████████| 170M/170M [00:03<00:00, 49.4MB/s]
+[ 123.33s] 
+=== Task 1/5: split_0_1 ===
+[ 123.33s] 
+========== Train domain: split_0_1 ==========
+[ 129.03s]   Epoch 1/25 | Loss: 0.4069 | CE: 0.3996 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.007303 | Train acc: 0.823 | edge_energy: 0.5483 | edge_drift: 16.2481
+[ 129.17s]     Val acc (split_0_1): 0.891
+[ 132.91s]   Epoch 2/25 | Loss: 0.3695 | CE: 0.3605 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.846 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 133.04s]     Val acc (split_0_1): 0.901
+[ 136.79s]   Epoch 3/25 | Loss: 0.2783 | CE: 0.2693 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.890 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 136.92s]     Val acc (split_0_1): 0.930
+[ 140.65s]   Epoch 4/25 | Loss: 0.2027 | CE: 0.1937 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.924 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 140.78s]     Val acc (split_0_1): 0.915
+[ 144.53s]   Epoch 5/25 | Loss: 0.1850 | CE: 0.1760 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.933 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 144.66s]     Val acc (split_0_1): 0.939
+[ 148.48s]   Epoch 6/25 | Loss: 0.1564 | CE: 0.1474 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.943 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 148.61s]     Val acc (split_0_1): 0.937
+[ 152.40s]   Epoch 7/25 | Loss: 0.1234 | CE: 0.1144 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.954 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 152.53s]     Val acc (split_0_1): 0.934
+[ 156.34s]   Epoch 8/25 | Loss: 0.1226 | CE: 0.1136 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.956 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 156.47s]     Val acc (split_0_1): 0.937
+[ 160.33s]   Epoch 9/25 | Loss: 0.0924 | CE: 0.0834 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.966 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 160.47s]     Val acc (split_0_1): 0.947
+[ 164.32s]   Epoch 10/25 | Loss: 0.0796 | CE: 0.0706 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.973 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 164.45s]     Val acc (split_0_1): 0.950
+[ 168.33s]   Epoch 11/25 | Loss: 0.0668 | CE: 0.0578 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.981 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 168.47s]     Val acc (split_0_1): 0.943
+[ 172.40s]   Epoch 12/25 | Loss: 0.0555 | CE: 0.0465 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.982 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 172.53s]     Val acc (split_0_1): 0.951
+[ 176.45s]   Epoch 13/25 | Loss: 0.0343 | CE: 0.0253 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.991 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 176.58s]     Val acc (split_0_1): 0.939
+[ 180.53s]   Epoch 14/25 | Loss: 0.0363 | CE: 0.0273 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.990 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 180.66s]     Val acc (split_0_1): 0.953
+[ 184.65s]   Epoch 15/25 | Loss: 0.0227 | CE: 0.0137 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.995 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 184.79s]     Val acc (split_0_1): 0.954
+[ 188.75s]   Epoch 16/25 | Loss: 0.0155 | CE: 0.0065 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.997 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 188.89s]     Val acc (split_0_1): 0.954
+[ 192.87s]   Epoch 17/25 | Loss: 0.0190 | CE: 0.0100 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.996 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 193.01s]     Val acc (split_0_1): 0.945
+[ 197.01s]   Epoch 18/25 | Loss: 0.0118 | CE: 0.0028 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 0.999 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 197.14s]     Val acc (split_0_1): 0.955
+[ 201.09s]   Epoch 19/25 | Loss: 0.0093 | CE: 0.0003 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 201.23s]     Val acc (split_0_1): 0.953
+[ 205.18s]   Epoch 20/25 | Loss: 0.0090 | CE: 0.0000 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 205.31s]     Val acc (split_0_1): 0.953
+[ 209.26s]   Epoch 21/25 | Loss: 0.0090 | CE: 0.0000 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 209.40s]     Val acc (split_0_1): 0.954
+[ 213.31s]   Epoch 22/25 | Loss: 0.0090 | CE: 0.0000 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 213.44s]     Val acc (split_0_1): 0.954
+[ 217.34s]   Epoch 23/25 | Loss: 0.0090 | CE: 0.0000 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 217.48s]     Val acc (split_0_1): 0.954
+[ 221.39s]   Epoch 24/25 | Loss: 0.0090 | CE: 0.0000 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 221.53s]     Val acc (split_0_1): 0.954
+[ 225.42s]   Epoch 25/25 | Loss: 0.0090 | CE: 0.0000 | Replay: 0.0000 | Reg: 0.000000 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 225.55s]     Val acc (split_0_1): 0.954
+[ 225.55s] [Memory] Save domain split_0_1
+[ 229.33s]  -> fisher_scalar[split_0_1] = 0.000074
+[ 229.33s]  -> coercivity[split_0_1] = 5.451
+[ 229.45s]   [After split_0_1] Test acc on split_0_1: 0.899
+
+Accuracy matrix (rows=after task t, cols=eval task k):
+After task  1: 0.899
+
+[ 229.45s] 
+=== Task 2/5: split_2_3 ===
+[ 229.45s] 
+========== Train domain: split_2_3 ==========
+[ 242.23s]   Epoch 1/25 | Loss: 0.6639 | CE: 0.5475 | Replay: 0.0812 | Reg: 0.026128 | Edge: 0.009004 | Train acc: 0.730 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 242.37s]     Val acc (split_2_3): 0.772
+[ 255.19s]   Epoch 2/25 | Loss: 0.7699 | CE: 0.5713 | Replay: 0.1399 | Reg: 0.049624 | Edge: 0.009004 | Train acc: 0.706 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 255.34s]     Val acc (split_2_3): 0.757
+[ 268.22s]   Epoch 3/25 | Loss: 0.5558 | CE: 0.4581 | Replay: 0.0370 | Reg: 0.051716 | Edge: 0.009004 | Train acc: 0.790 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 268.35s]     Val acc (split_2_3): 0.781
+[ 281.21s]   Epoch 4/25 | Loss: 0.5036 | CE: 0.4118 | Replay: 0.0260 | Reg: 0.056792 | Edge: 0.009004 | Train acc: 0.814 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 281.34s]     Val acc (split_2_3): 0.796
+[ 294.21s]   Epoch 5/25 | Loss: 0.4708 | CE: 0.3733 | Replay: 0.0237 | Reg: 0.064795 | Edge: 0.009004 | Train acc: 0.835 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 294.34s]     Val acc (split_2_3): 0.794
+[ 307.15s]   Epoch 6/25 | Loss: 0.4476 | CE: 0.3418 | Replay: 0.0226 | Reg: 0.074097 | Edge: 0.009004 | Train acc: 0.855 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 307.28s]     Val acc (split_2_3): 0.811
+[ 320.15s]   Epoch 7/25 | Loss: 0.4296 | CE: 0.3167 | Replay: 0.0211 | Reg: 0.082851 | Edge: 0.009004 | Train acc: 0.861 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 320.28s]     Val acc (split_2_3): 0.766
+[ 333.15s]   Epoch 8/25 | Loss: 0.3929 | CE: 0.2737 | Replay: 0.0181 | Reg: 0.092164 | Edge: 0.009004 | Train acc: 0.884 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 333.28s]     Val acc (split_2_3): 0.794
+[ 346.12s]   Epoch 9/25 | Loss: 0.3645 | CE: 0.2373 | Replay: 0.0178 | Reg: 0.100393 | Edge: 0.009004 | Train acc: 0.900 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 346.26s]     Val acc (split_2_3): 0.812
+[ 359.08s]   Epoch 10/25 | Loss: 0.3099 | CE: 0.1809 | Replay: 0.0124 | Reg: 0.107568 | Edge: 0.009004 | Train acc: 0.926 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 359.21s]     Val acc (split_2_3): 0.806
+[ 372.05s]   Epoch 11/25 | Loss: 0.2806 | CE: 0.1473 | Replay: 0.0113 | Reg: 0.112961 | Edge: 0.009004 | Train acc: 0.940 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 372.18s]     Val acc (split_2_3): 0.795
+[ 385.01s]   Epoch 12/25 | Loss: 0.2685 | CE: 0.1281 | Replay: 0.0131 | Reg: 0.118328 | Edge: 0.009004 | Train acc: 0.953 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 385.15s]     Val acc (split_2_3): 0.786
+[ 398.02s]   Epoch 13/25 | Loss: 0.2354 | CE: 0.0954 | Replay: 0.0094 | Reg: 0.121601 | Edge: 0.009004 | Train acc: 0.963 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 398.16s]     Val acc (split_2_3): 0.790
+[ 411.06s]   Epoch 14/25 | Loss: 0.2189 | CE: 0.0802 | Replay: 0.0070 | Reg: 0.122625 | Edge: 0.009004 | Train acc: 0.970 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 411.19s]     Val acc (split_2_3): 0.798
+[ 424.01s]   Epoch 15/25 | Loss: 0.1697 | CE: 0.0363 | Replay: 0.0037 | Reg: 0.120710 | Edge: 0.009004 | Train acc: 0.986 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 424.15s]     Val acc (split_2_3): 0.808
+[ 436.98s]   Epoch 16/25 | Loss: 0.1471 | CE: 0.0214 | Replay: 0.0010 | Reg: 0.115715 | Edge: 0.009004 | Train acc: 0.994 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 437.11s]     Val acc (split_2_3): 0.806
+[ 449.95s]   Epoch 17/25 | Loss: 0.1397 | CE: 0.0176 | Replay: 0.0015 | Reg: 0.111662 | Edge: 0.009004 | Train acc: 0.994 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 450.08s]     Val acc (split_2_3): 0.791
+[ 462.92s]   Epoch 18/25 | Loss: 0.1447 | CE: 0.0232 | Replay: 0.0018 | Reg: 0.110723 | Edge: 0.009004 | Train acc: 0.992 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 463.05s]     Val acc (split_2_3): 0.807
+[ 475.90s]   Epoch 19/25 | Loss: 0.1700 | CE: 0.0458 | Replay: 0.0044 | Reg: 0.110810 | Edge: 0.009004 | Train acc: 0.986 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 476.03s]     Val acc (split_2_3): 0.816
+[ 488.85s]   Epoch 20/25 | Loss: 0.1208 | CE: 0.0035 | Replay: 0.0000 | Reg: 0.108246 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 488.98s]     Val acc (split_2_3): 0.809
+[ 501.82s]   Epoch 21/25 | Loss: 0.1159 | CE: 0.0012 | Replay: 0.0000 | Reg: 0.105692 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 501.95s]     Val acc (split_2_3): 0.805
+[ 514.81s]   Epoch 22/25 | Loss: 0.1135 | CE: 0.0005 | Replay: 0.0000 | Reg: 0.104019 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 514.94s]     Val acc (split_2_3): 0.804
+[ 527.80s]   Epoch 23/25 | Loss: 0.1122 | CE: 0.0002 | Replay: 0.0000 | Reg: 0.102975 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 527.93s]     Val acc (split_2_3): 0.805
+[ 540.79s]   Epoch 24/25 | Loss: 0.1116 | CE: 0.0002 | Replay: 0.0000 | Reg: 0.102415 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 540.93s]     Val acc (split_2_3): 0.805
+[ 553.80s]   Epoch 25/25 | Loss: 0.1114 | CE: 0.0002 | Replay: 0.0000 | Reg: 0.102192 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 553.94s]     Val acc (split_2_3): 0.805
+[ 553.94s] [Memory] Save domain split_2_3
+[ 557.61s]  -> fisher_scalar[split_2_3] = 0.000055
+[ 557.61s]  -> coercivity[split_2_3] = 4.505
+[ 557.75s]   [After split_2_3] Test acc on split_0_1: 0.936
+[ 557.88s]   [After split_2_3] Test acc on split_2_3: 0.780
+
+Accuracy matrix (rows=after task t, cols=eval task k):
+After task  1: 0.899 0.000
+After task  2: 0.936 0.780
+
+[ 557.88s] 
+=== Task 3/5: split_4_5 ===
+[ 557.88s] 
+========== Train domain: split_4_5 ==========
+[ 579.72s]   Epoch 1/25 | Loss: 0.8329 | CE: 0.5191 | Replay: 0.1770 | Reg: 0.127825 | Edge: 0.009004 | Train acc: 0.743 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 579.86s]     Val acc (split_4_5): 0.762
+[ 601.93s]   Epoch 2/25 | Loss: 0.7727 | CE: 0.4489 | Replay: 0.1316 | Reg: 0.183252 | Edge: 0.009004 | Train acc: 0.789 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 602.07s]     Val acc (split_4_5): 0.782
+[ 624.00s]   Epoch 3/25 | Loss: 0.6812 | CE: 0.3998 | Replay: 0.0763 | Reg: 0.195976 | Edge: 0.009004 | Train acc: 0.816 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 624.15s]     Val acc (split_4_5): 0.765
+[ 646.21s]   Epoch 4/25 | Loss: 0.6718 | CE: 0.3649 | Replay: 0.0805 | Reg: 0.217483 | Edge: 0.009004 | Train acc: 0.833 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 646.34s]     Val acc (split_4_5): 0.783
+[ 668.30s]   Epoch 5/25 | Loss: 0.6538 | CE: 0.3419 | Replay: 0.0723 | Reg: 0.230660 | Edge: 0.009004 | Train acc: 0.847 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 668.44s]     Val acc (split_4_5): 0.784
+[ 690.39s]   Epoch 6/25 | Loss: 0.5818 | CE: 0.2883 | Replay: 0.0478 | Reg: 0.236616 | Edge: 0.009004 | Train acc: 0.873 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 690.53s]     Val acc (split_4_5): 0.794
+[ 712.50s]   Epoch 7/25 | Loss: 0.5922 | CE: 0.2737 | Replay: 0.0602 | Reg: 0.249368 | Edge: 0.009004 | Train acc: 0.883 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 712.63s]     Val acc (split_4_5): 0.804
+[ 734.63s]   Epoch 8/25 | Loss: 0.5710 | CE: 0.2508 | Replay: 0.0502 | Reg: 0.261066 | Edge: 0.009004 | Train acc: 0.892 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 734.76s]     Val acc (split_4_5): 0.788
+[ 756.61s]   Epoch 9/25 | Loss: 0.5155 | CE: 0.2041 | Replay: 0.0364 | Reg: 0.265926 | Edge: 0.009004 | Train acc: 0.915 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 756.76s]     Val acc (split_4_5): 0.800
+[ 778.59s]   Epoch 10/25 | Loss: 0.5013 | CE: 0.1853 | Replay: 0.0394 | Reg: 0.267634 | Edge: 0.009004 | Train acc: 0.918 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 778.72s]     Val acc (split_4_5): 0.793
+[ 800.69s]   Epoch 11/25 | Loss: 0.4770 | CE: 0.1615 | Replay: 0.0352 | Reg: 0.271332 | Edge: 0.009004 | Train acc: 0.935 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 800.82s]     Val acc (split_4_5): 0.791
+[ 822.70s]   Epoch 12/25 | Loss: 0.4196 | CE: 0.1191 | Replay: 0.0233 | Reg: 0.268182 | Edge: 0.009004 | Train acc: 0.951 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 822.84s]     Val acc (split_4_5): 0.799
+[ 844.93s]   Epoch 13/25 | Loss: 0.4084 | CE: 0.1051 | Replay: 0.0266 | Reg: 0.267647 | Edge: 0.009004 | Train acc: 0.959 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 845.06s]     Val acc (split_4_5): 0.798
+[ 867.08s]   Epoch 14/25 | Loss: 0.3607 | CE: 0.0712 | Replay: 0.0160 | Reg: 0.264410 | Edge: 0.009004 | Train acc: 0.971 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 867.22s]     Val acc (split_4_5): 0.796
+[ 889.25s]   Epoch 15/25 | Loss: 0.3379 | CE: 0.0577 | Replay: 0.0150 | Reg: 0.256118 | Edge: 0.009004 | Train acc: 0.977 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 889.38s]     Val acc (split_4_5): 0.801
+[ 911.32s]   Epoch 16/25 | Loss: 0.3065 | CE: 0.0419 | Replay: 0.0082 | Reg: 0.247421 | Edge: 0.009004 | Train acc: 0.985 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 911.46s]     Val acc (split_4_5): 0.802
+[ 933.40s]   Epoch 17/25 | Loss: 0.2782 | CE: 0.0289 | Replay: 0.0041 | Reg: 0.236148 | Edge: 0.009004 | Train acc: 0.989 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 933.53s]     Val acc (split_4_5): 0.800
+[ 955.56s]   Epoch 18/25 | Loss: 0.2549 | CE: 0.0191 | Replay: 0.0020 | Reg: 0.224776 | Edge: 0.009004 | Train acc: 0.994 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 955.70s]     Val acc (split_4_5): 0.806
+[ 977.76s]   Epoch 19/25 | Loss: 0.2333 | CE: 0.0085 | Replay: 0.0009 | Reg: 0.214832 | Edge: 0.009004 | Train acc: 0.997 | edge_energy: 0.5483 | edge_drift: 0.0000
+[ 977.90s]     Val acc (split_4_5): 0.797
+[ 999.95s]   Epoch 20/25 | Loss: 0.2171 | CE: 0.0023 | Replay: 0.0002 | Reg: 0.205549 | Edge: 0.009004 | Train acc: 0.999 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1000.08s]     Val acc (split_4_5): 0.806
+[1022.17s]   Epoch 21/25 | Loss: 0.2068 | CE: 0.0002 | Replay: 0.0000 | Reg: 0.197634 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1022.31s]     Val acc (split_4_5): 0.805
+[1044.35s]   Epoch 22/25 | Loss: 0.2013 | CE: 0.0001 | Replay: 0.0000 | Reg: 0.192216 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1044.48s]     Val acc (split_4_5): 0.805
+[1066.39s]   Epoch 23/25 | Loss: 0.1980 | CE: 0.0001 | Replay: 0.0000 | Reg: 0.188939 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1066.52s]     Val acc (split_4_5): 0.804
+[1088.44s]   Epoch 24/25 | Loss: 0.1963 | CE: 0.0001 | Replay: 0.0000 | Reg: 0.187209 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1088.57s]     Val acc (split_4_5): 0.804
+[1110.57s]   Epoch 25/25 | Loss: 0.1956 | CE: 0.0001 | Replay: 0.0000 | Reg: 0.186519 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1110.70s]     Val acc (split_4_5): 0.804
+[1110.70s] [Memory] Save domain split_4_5
+[1114.37s]  -> fisher_scalar[split_4_5] = 0.000084
+[1114.37s]  -> coercivity[split_4_5] = 5.876
+[1114.51s]   [After split_4_5] Test acc on split_0_1: 0.929
+[1114.66s]   [After split_4_5] Test acc on split_2_3: 0.771
+[1114.80s]   [After split_4_5] Test acc on split_4_5: 0.786
+
+Accuracy matrix (rows=after task t, cols=eval task k):
+After task  1: 0.899 0.000 0.000
+After task  2: 0.936 0.780 0.000
+After task  3: 0.929 0.771 0.786
+
+[1114.80s] 
+=== Task 4/5: split_6_7 ===
+[1114.80s] 
+========== Train domain: split_6_7 ==========
+[1145.81s]   Epoch 1/25 | Loss: 1.1689 | CE: 0.7057 | Replay: 0.2025 | Reg: 0.251770 | Edge: 0.009004 | Train acc: 0.525 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1145.95s]     Val acc (split_6_7): 0.599
+[1177.11s]   Epoch 2/25 | Loss: 1.0998 | CE: 0.6250 | Replay: 0.1681 | Reg: 0.297756 | Edge: 0.009004 | Train acc: 0.650 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1177.25s]     Val acc (split_6_7): 0.723
+[1208.34s]   Epoch 3/25 | Loss: 1.0193 | CE: 0.5020 | Replay: 0.1676 | Reg: 0.340670 | Edge: 0.009004 | Train acc: 0.743 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1208.47s]     Val acc (split_6_7): 0.772
+[1239.61s]   Epoch 4/25 | Loss: 1.0353 | CE: 0.4451 | Replay: 0.1934 | Reg: 0.387729 | Edge: 0.009004 | Train acc: 0.763 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1239.74s]     Val acc (split_6_7): 0.739
+[1270.91s]   Epoch 5/25 | Loss: 0.9976 | CE: 0.3863 | Replay: 0.1800 | Reg: 0.422240 | Edge: 0.009004 | Train acc: 0.799 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1271.05s]     Val acc (split_6_7): 0.834
+[1302.06s]   Epoch 6/25 | Loss: 0.8634 | CE: 0.2883 | Replay: 0.1239 | Reg: 0.442184 | Edge: 0.009004 | Train acc: 0.878 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1302.19s]     Val acc (split_6_7): 0.868
+[1333.25s]   Epoch 7/25 | Loss: 0.6995 | CE: 0.2105 | Replay: 0.0847 | Reg: 0.395229 | Edge: 0.009004 | Train acc: 0.912 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1333.38s]     Val acc (split_6_7): 0.921
+[1364.43s]   Epoch 8/25 | Loss: 0.6245 | CE: 0.1797 | Replay: 0.0685 | Reg: 0.367272 | Edge: 0.009004 | Train acc: 0.927 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1364.57s]     Val acc (split_6_7): 0.931
+[1395.67s]   Epoch 9/25 | Loss: 0.5779 | CE: 0.1566 | Replay: 0.0560 | Reg: 0.356336 | Edge: 0.009004 | Train acc: 0.935 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1395.81s]     Val acc (split_6_7): 0.924
+[1426.94s]   Epoch 10/25 | Loss: 0.5157 | CE: 0.1400 | Replay: 0.0409 | Reg: 0.325801 | Edge: 0.009004 | Train acc: 0.942 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1427.07s]     Val acc (split_6_7): 0.930
+[1458.10s]   Epoch 11/25 | Loss: 0.4608 | CE: 0.1144 | Replay: 0.0316 | Reg: 0.305773 | Edge: 0.009004 | Train acc: 0.955 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1458.23s]     Val acc (split_6_7): 0.921
+[1489.33s]   Epoch 12/25 | Loss: 0.4219 | CE: 0.0958 | Replay: 0.0239 | Reg: 0.293179 | Edge: 0.009004 | Train acc: 0.962 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1489.46s]     Val acc (split_6_7): 0.921
+[1520.51s]   Epoch 13/25 | Loss: 0.4317 | CE: 0.0972 | Replay: 0.0337 | Reg: 0.291794 | Edge: 0.009004 | Train acc: 0.962 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1520.66s]     Val acc (split_6_7): 0.929
+[1551.79s]   Epoch 14/25 | Loss: 0.3592 | CE: 0.0586 | Replay: 0.0170 | Reg: 0.274584 | Edge: 0.009004 | Train acc: 0.979 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1551.92s]     Val acc (split_6_7): 0.909
+[1583.14s]   Epoch 15/25 | Loss: 0.3247 | CE: 0.0459 | Replay: 0.0092 | Reg: 0.260710 | Edge: 0.009004 | Train acc: 0.983 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1583.28s]     Val acc (split_6_7): 0.880
+[1614.39s]   Epoch 16/25 | Loss: 0.3246 | CE: 0.0508 | Replay: 0.0127 | Reg: 0.252040 | Edge: 0.009004 | Train acc: 0.982 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1614.53s]     Val acc (split_6_7): 0.932
+[1645.81s]   Epoch 17/25 | Loss: 0.2745 | CE: 0.0200 | Replay: 0.0064 | Reg: 0.239064 | Edge: 0.009004 | Train acc: 0.993 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1645.94s]     Val acc (split_6_7): 0.938
+[1677.15s]   Epoch 18/25 | Loss: 0.2508 | CE: 0.0148 | Replay: 0.0016 | Reg: 0.225459 | Edge: 0.009004 | Train acc: 0.995 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1677.29s]     Val acc (split_6_7): 0.927
+[1708.38s]   Epoch 19/25 | Loss: 0.2405 | CE: 0.0117 | Replay: 0.0014 | Reg: 0.218312 | Edge: 0.009004 | Train acc: 0.996 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1708.51s]     Val acc (split_6_7): 0.927
+[1739.62s]   Epoch 20/25 | Loss: 0.2204 | CE: 0.0036 | Replay: 0.0001 | Reg: 0.207679 | Edge: 0.009004 | Train acc: 0.999 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1739.75s]     Val acc (split_6_7): 0.935
+[1770.84s]   Epoch 21/25 | Loss: 0.2103 | CE: 0.0011 | Replay: 0.0001 | Reg: 0.200130 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1770.99s]     Val acc (split_6_7): 0.935
+[1802.10s]   Epoch 22/25 | Loss: 0.2043 | CE: 0.0005 | Replay: 0.0000 | Reg: 0.194802 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1802.23s]     Val acc (split_6_7): 0.936
+[1833.46s]   Epoch 23/25 | Loss: 0.2009 | CE: 0.0002 | Replay: 0.0000 | Reg: 0.191646 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1833.59s]     Val acc (split_6_7): 0.933
+[1864.66s]   Epoch 24/25 | Loss: 0.1992 | CE: 0.0002 | Replay: 0.0000 | Reg: 0.189982 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1864.80s]     Val acc (split_6_7): 0.934
+[1896.01s]   Epoch 25/25 | Loss: 0.1986 | CE: 0.0002 | Replay: 0.0000 | Reg: 0.189327 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1896.15s]     Val acc (split_6_7): 0.934
+[1896.15s] [Memory] Save domain split_6_7
+[1899.82s]  -> fisher_scalar[split_6_7] = 0.000209
+[1899.82s]  -> coercivity[split_6_7] = 10.032
+[1899.96s]   [After split_6_7] Test acc on split_0_1: 0.925
+[1900.09s]   [After split_6_7] Test acc on split_2_3: 0.772
+[1900.22s]   [After split_6_7] Test acc on split_4_5: 0.777
+[1900.36s]   [After split_6_7] Test acc on split_6_7: 0.843
+
+Accuracy matrix (rows=after task t, cols=eval task k):
+After task  1: 0.899 0.000 0.000 0.000
+After task  2: 0.936 0.780 0.000 0.000
+After task  3: 0.929 0.771 0.786 0.000
+After task  4: 0.925 0.772 0.777 0.843
+
+[1900.36s] 
+=== Task 5/5: split_8_9 ===
+[1900.36s] 
+========== Train domain: split_8_9 ==========
+[1941.00s]   Epoch 1/25 | Loss: 1.1491 | CE: 0.4669 | Replay: 0.2850 | Reg: 0.388094 | Edge: 0.009004 | Train acc: 0.784 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1941.14s]     Val acc (split_8_9): 0.843
+[1981.61s]   Epoch 2/25 | Loss: 0.9749 | CE: 0.3556 | Replay: 0.1999 | Reg: 0.410411 | Edge: 0.009004 | Train acc: 0.848 | edge_energy: 0.5483 | edge_drift: 0.0000
+[1981.75s]     Val acc (split_8_9): 0.862
+[2022.23s]   Epoch 3/25 | Loss: 0.8118 | CE: 0.2947 | Replay: 0.1323 | Reg: 0.375826 | Edge: 0.009004 | Train acc: 0.875 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2022.37s]     Val acc (split_8_9): 0.864
+[2063.10s]   Epoch 4/25 | Loss: 0.7884 | CE: 0.2733 | Replay: 0.1206 | Reg: 0.385470 | Edge: 0.009004 | Train acc: 0.887 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2063.23s]     Val acc (split_8_9): 0.854
+[2103.63s]   Epoch 5/25 | Loss: 0.7458 | CE: 0.2422 | Replay: 0.1106 | Reg: 0.384048 | Edge: 0.009004 | Train acc: 0.902 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2103.77s]     Val acc (split_8_9): 0.866
+[2144.36s]   Epoch 6/25 | Loss: 0.6999 | CE: 0.2196 | Replay: 0.0842 | Reg: 0.387158 | Edge: 0.009004 | Train acc: 0.913 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2144.49s]     Val acc (split_8_9): 0.898
+[2184.95s]   Epoch 7/25 | Loss: 0.6715 | CE: 0.2035 | Replay: 0.0756 | Reg: 0.383369 | Edge: 0.009004 | Train acc: 0.918 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2185.08s]     Val acc (split_8_9): 0.891
+[2225.55s]   Epoch 8/25 | Loss: 0.6488 | CE: 0.1902 | Replay: 0.0789 | Reg: 0.370735 | Edge: 0.009004 | Train acc: 0.926 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2225.69s]     Val acc (split_8_9): 0.888
+[2266.32s]   Epoch 9/25 | Loss: 0.6073 | CE: 0.1632 | Replay: 0.0645 | Reg: 0.370687 | Edge: 0.009004 | Train acc: 0.937 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2266.45s]     Val acc (split_8_9): 0.878
+[2306.76s]   Epoch 10/25 | Loss: 0.6018 | CE: 0.1620 | Replay: 0.0640 | Reg: 0.366830 | Edge: 0.009004 | Train acc: 0.938 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2306.89s]     Val acc (split_8_9): 0.902
+[2347.56s]   Epoch 11/25 | Loss: 0.5554 | CE: 0.1355 | Replay: 0.0502 | Reg: 0.360616 | Edge: 0.009004 | Train acc: 0.948 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2347.69s]     Val acc (split_8_9): 0.886
+[2388.51s]   Epoch 12/25 | Loss: 0.5030 | CE: 0.1148 | Replay: 0.0363 | Reg: 0.342924 | Edge: 0.009004 | Train acc: 0.956 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2388.64s]     Val acc (split_8_9): 0.899
+[2429.50s]   Epoch 13/25 | Loss: 0.4424 | CE: 0.0881 | Replay: 0.0268 | Reg: 0.318472 | Edge: 0.009004 | Train acc: 0.967 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2429.64s]     Val acc (split_8_9): 0.880
+[2470.39s]   Epoch 14/25 | Loss: 0.4340 | CE: 0.0843 | Replay: 0.0251 | Reg: 0.315578 | Edge: 0.009004 | Train acc: 0.967 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2470.52s]     Val acc (split_8_9): 0.885
+[2511.17s]   Epoch 15/25 | Loss: 0.3768 | CE: 0.0596 | Replay: 0.0113 | Reg: 0.296912 | Edge: 0.009004 | Train acc: 0.979 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2511.31s]     Val acc (split_8_9): 0.899
+[2552.31s]   Epoch 16/25 | Loss: 0.3376 | CE: 0.0426 | Replay: 0.0088 | Reg: 0.277268 | Edge: 0.009004 | Train acc: 0.984 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2552.45s]     Val acc (split_8_9): 0.894
+[2593.11s]   Epoch 17/25 | Loss: 0.3403 | CE: 0.0413 | Replay: 0.0137 | Reg: 0.276310 | Edge: 0.009004 | Train acc: 0.986 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2593.25s]     Val acc (split_8_9): 0.886
+[2634.24s]   Epoch 18/25 | Loss: 0.3068 | CE: 0.0318 | Replay: 0.0060 | Reg: 0.259892 | Edge: 0.009004 | Train acc: 0.990 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2634.38s]     Val acc (split_8_9): 0.883
+[2675.01s]   Epoch 19/25 | Loss: 0.2822 | CE: 0.0216 | Replay: 0.0016 | Reg: 0.250042 | Edge: 0.009004 | Train acc: 0.992 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2675.14s]     Val acc (split_8_9): 0.890
+[2715.62s]   Epoch 20/25 | Loss: 0.2643 | CE: 0.0124 | Replay: 0.0018 | Reg: 0.241086 | Edge: 0.009004 | Train acc: 0.996 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2715.75s]     Val acc (split_8_9): 0.899
+[2756.14s]   Epoch 21/25 | Loss: 0.2409 | CE: 0.0023 | Replay: 0.0002 | Reg: 0.229396 | Edge: 0.009004 | Train acc: 0.999 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2756.28s]     Val acc (split_8_9): 0.889
+[2796.77s]   Epoch 22/25 | Loss: 0.2323 | CE: 0.0010 | Replay: 0.0001 | Reg: 0.222131 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2796.92s]     Val acc (split_8_9): 0.893
+[2837.40s]   Epoch 23/25 | Loss: 0.2272 | CE: 0.0005 | Replay: 0.0001 | Reg: 0.217658 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2837.54s]     Val acc (split_8_9): 0.893
+[2878.14s]   Epoch 24/25 | Loss: 0.2250 | CE: 0.0005 | Replay: 0.0001 | Reg: 0.215421 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2878.28s]     Val acc (split_8_9): 0.892
+[2918.69s]   Epoch 25/25 | Loss: 0.2241 | CE: 0.0005 | Replay: 0.0001 | Reg: 0.214555 | Edge: 0.009004 | Train acc: 1.000 | edge_energy: 0.5483 | edge_drift: 0.0000
+[2918.82s]     Val acc (split_8_9): 0.893
+[2918.82s] [Memory] Save domain split_8_9
+[2922.49s]  -> fisher_scalar[split_8_9] = 0.000287
+[2922.49s]  -> coercivity[split_8_9] = 11.825
+[2922.63s]   [After split_8_9] Test acc on split_0_1: 0.909
+[2922.76s]   [After split_8_9] Test acc on split_2_3: 0.755
+[2922.90s]   [After split_8_9] Test acc on split_4_5: 0.795
+[2923.03s]   [After split_8_9] Test acc on split_6_7: 0.876
+[2923.16s]   [After split_8_9] Test acc on split_8_9: 0.848
+
+Accuracy matrix (rows=after task t, cols=eval task k):
+After task  1: 0.899 0.000 0.000 0.000 0.000
+After task  2: 0.936 0.780 0.000 0.000 0.000
+After task  3: 0.929 0.771 0.786 0.000 0.000
+After task  4: 0.925 0.772 0.777 0.843 0.000
+After task  5: 0.909 0.755 0.795 0.876 0.848
+
+
+Final coercivities:
+  split_0_1: 5.451
+  split_2_3: 4.505
+  split_4_5: 5.876
+  split_6_7: 10.032
+  split_8_9: 11.825
+
+Final accuracies per task:
+  Task 1 (split_0_1): 0.909
+  Task 2 (split_2_3): 0.755
+  Task 3 (split_4_5): 0.795
+  Task 4 (split_6_7): 0.876
+  Task 5 (split_8_9): 0.848
+
+Average final accuracy over 5 tasks: 0.837
