@@ -1,6 +1,7 @@
 
 
 # Graphene ML: Audit-Pure Continual Learning Framework
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18146946.svg)](https://doi.org/10.5281/zenodo.18146946)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Framework: PyTorch](https://img.shields.io/badge/Framework-PyTorch-ee4c2c.svg)](https://pytorch.org/)
@@ -96,15 +97,17 @@ An enthusiast exploring the synergy between Scientific Computing, Control System
 
 ## 📖 Citation
 
-If this framework contributes to your research, please consider citing it as follows:
+If this framework contributes to your research, please cite it as follows:
 
 ```bibtex
 @software{hardiyan2026graphene,
   author = {Hardiyan, Hari},
   title = {Graphene ML: Audit-Pure Continual Learning Framework},
   year = {2026},
-  url = {https://github.com/harihardiyan/graphene-ml},
-  note = {Version 1.0.0}
+  publisher = {Zenodo},
+  version = {v1.0.0-alpha},
+  doi = {10.5281/zenodo.18146946},
+  url = {https://doi.org/10.5281/zenodo.18146946}
 }
 ```
 
