@@ -1,593 +1,551 @@
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Audit-pure graphene tight-binding toolkit (Q1-ready, robust edition):
-- Physics-correct invariants (Dirac K/K′, Berry ±π, vF grad/fit, isotropy, C3, τ-gauge)
-- Symmetric audits at K and K′ (curvature, linear regime)
-- Convergence studies:
-  * Curvature via adaptive step and Richardson extrapolation (with error-based bound)
-  * Velocity ring-fit stability across q_rel and directions
-  * Berry phase adaptive across radii and point counts
-- Scaling audits with >=13 points, statistics (relative residual, R²)
-- Robust Newton refinement with damping fallback
-- t′ handling: warnings and relaxed assertions when Dirac cone approximation breaks
-- Constants via scipy.constants (CODATA 2022 provenance)
-- CLI tolerant to Jupyter/Colab kernel args
-- Timestamp (UTC) + environment + constants metadata
-"""
 
-from jax import config, jit
-config.update('jax_enable_x64', True)
+import math, time, random
+from dataclasses import dataclass, field
+from typing import Dict, Optional, Tuple, List
 
-import jax
-import jax.numpy as jnp
-import argparse
-import json
-import csv
-import os
-import sys
-from dataclasses import dataclass
-from datetime import datetime, timezone
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Subset, TensorDataset
+from torchvision import datasets, transforms, models
+import matplotlib.pyplot as plt
+import numpy as np
+import torch.nn.functional as F
 
-# CODATA constants from scipy (provenance)
-try:
-    from scipy.constants import hbar as HBAR_SI, electron_volt as EV_TO_J, codata
-    CONSTANTS_METADATA = {
-        "source": "scipy.constants",
-        "codata_version": getattr(codata, "version", "CODATA 2022"),
-        "values": {
-            "hbar_Js": HBAR_SI,
-            "eV_to_J": EV_TO_J,
-        },
-    }
-    eV_to_J = float(EV_TO_J)
-    hbar = float(HBAR_SI)
-except Exception:
-    # Fallback to known CODATA 2022 values if scipy is unavailable
-    CONSTANTS_METADATA = {
-        "source": "fallback (hard-coded)",
-        "codata_version": "CODATA 2022",
-        "values": {
-            "hbar_Js": 1.054571817e-34,
-            "eV_to_J": 1.602176634e-19,
-        },
-    }
-    eV_to_J = 1.602176634e-19
-    hbar = 1.054571817e-34
+# =========================
+# 0. Utilities
+# =========================
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
-# ----- CONFIG (tolerances, sampling) -----
-@dataclass(frozen=True)
-class AuditConfig:
-    q_rel_default: float = 1e-9          # ring radius relative to a
-    h_rel_default: float = 1e-9          # curvature step relative to a
-    directions_ring: int = 64
-    directions_curvature: int = 64
-    berry_dirs_base: int = 256
-    berry_radius_base_rel: float = 1e-9
-    scaling_points: int = 13             # >= 10 for statistics
-    det_tol: float = 1e-24               # Newton Jacobian tol
-    newton_max_iter: int = 100
-    newton_tol: float = 1e-16
-    vf_tol_rel: float = 1e-6
-    berry_tol_abs: float = 1e-6
-    periodicity_atol: float = 1e-12
-    hermiticity_atol: float = 1e-12
-    gauge_atol: float = 1e-12
-    curvature_min_abs_bound: float = 1e-12  # minimal absolute bound floor (scaled)
-    scaling_R2_min: float = 0.999999
-    tprime_relax_threshold: float = 0.3  # relax assertions when t'/t exceeds this
-    tprime_isotropy_relax: float = 5e-6  # relaxed isotropy tolerance when t' large
+class SimpleLogger:
+    def __init__(self): self.t0 = time.time()
+    def log(self, msg: str): print(f"[{time.time()-self.t0:7.2f}s] {msg}")
 
-CFG = AuditConfig()
+# =========================
+# 1. ResNet-18 encoder for CIFAR-10
+# =========================
+class ResNetEncoder(nn.Module):
+    """
+    ResNet-18 backbone without classification head; outputs a fixed feature vector.
+    """
+    def __init__(self, output_dim: int):
+        super().__init__()
+        resnet = models.resnet18(weights=None)
+        self.features = nn.Sequential(
+            resnet.conv1, resnet.bn1, resnet.relu,
+            resnet.maxpool,
+            resnet.layer1,
+            resnet.layer2,
+            resnet.layer3,
+            resnet.layer4,
+            resnet.avgpool
+        )
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(512, output_dim),
+            nn.ReLU(),
+        )
 
-# ----- LATTICE AND HELPERS -----
-def build_lattice(a):
-    a1 = jnp.array([0.5 * a,  jnp.sqrt(3.0) * a / 2.0])
-    a2 = jnp.array([-0.5 * a, jnp.sqrt(3.0) * a / 2.0])
-    A = jnp.stack([a1, a2], axis=1)
-    B = 2.0 * jnp.pi * jnp.linalg.inv(A)
-    b1, b2 = B[:, 0], B[:, 1]
-    a_cc = a / jnp.sqrt(3.0)
-    tau = jnp.array([0.0, a_cc])
-    deltas = jnp.stack([tau, tau - a1, tau - a2], axis=0)
-    nnn = jnp.stack([ a1, -a1, a2, -a2, a1 - a2, -(a1 - a2) ], axis=0)
-    return a1, a2, A, b1, b2, a_cc, tau, deltas, nnn
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.features(x)
+        return self.fc(h)
 
-def vF_analytic_from(a_cc, tJ):
-    return (1.5 * a_cc * tJ) / hbar
+# =========================
+# 2. Hex-grid backbone with controlled edge-plasticity (safe update)
+# =========================
+def build_hex_mask(h: int, w: int, device: torch.device) -> torch.Tensor:
+    n = h * w
+    M = torch.zeros(n, n, device=device)
+    def idx(r, c): return r * w + c
+    for r in range(h):
+        for c in range(w):
+            i = idx(r, c)
+            neigh = []
+            if r > 0: neigh.append(idx(r - 1, c))
+            if r < h - 1: neigh.append(idx(r + 1, c))
+            if c > 0: neigh.append(idx(r, c - 1))
+            if c < w - 1: neigh.append(idx(r, c + 1))
+            if r > 0 and c > 0: neigh.append(idx(r - 1, c - 1))
+            if r < h - 1 and c < w - 1: neigh.append(idx(r + 1, c + 1))
+            for j in neigh:
+                M[i, j] = 1.0
+                M[j, i] = 1.0
+    return M
 
-# ----- STRUCTURE FACTOR AND HAMILTONIAN -----
-def make_f_eps(deltas, nnn, tJ, tprimeJ):
-    @jit
-    def f_k(k):
-        return -tJ * jnp.sum(jnp.exp(1j * (deltas @ k)))
-    @jit
-    def eps_diag(k):
-        if tprimeJ == 0.0:
-            return 0.0
-        return -tprimeJ * jnp.sum(jnp.cos(nnn @ k))
-    return f_k, eps_diag
+class GrapheneHexBackbone(nn.Module):
+    """
+    Controlled edge-plasticity:
+    - E parameter (non-grad, symmetric under mask) -> softplus -> A_raw
+    - Degree normalization -> A_hat
+    - Hebbian update scaled by Fisher (metaplastisitas), only in liquid phase
+    - SAFE: edge update moved out of forward, applied via apply_edge_update() with no_grad
+    """
+    def __init__(
+        self, input_dim: int, hidden_dim: int, feature_dim: int,
+        grid_h: int, grid_w: int, device: torch.device,
+        num_layers: int = 3, dropout_p: float = 0.2,
+        eta0: float = 1e-3, mu0: float = 1e-4, gamma: float = 50.0, delta: float = 10.0,
+        e_min: float = -2.0, e_max: float = 2.0,
+        lambda_edge_sparse: float = 1e-5, lambda_edge_smooth: float = 1e-5,
+    ):
+        super().__init__()
+        self.device = device
+        self.num_nodes = grid_h * grid_w
+        self.phase = "solid"
+        self.dropout = nn.Dropout(dropout_p)
+        self.input_proj = nn.Linear(input_dim, hidden_dim)
+        self.gcn_layers = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(num_layers - 1)])
+        self.out_proj = nn.Linear(hidden_dim, feature_dim)
+        self.activation = nn.ReLU()
 
-def make_hamiltonian(f_k, eps_diag):
-    @jit
-    def h_k(k):
-        f = f_k(k)
-        e = eps_diag(k)
-        return jnp.array([[e + 0.0j, f],
-                          [jnp.conj(f), e + 0.0j]], dtype=jnp.complex128)
-    @jit
-    def energies(k):
-        return jnp.linalg.eigvalsh(h_k(k))
-    return h_k, energies
+        # Edge mask
+        self.register_buffer("A_mask", build_hex_mask(grid_h, grid_w, device))
+        # Edge parameter (non-grad)
+        self.E = nn.Parameter(torch.zeros(self.num_nodes, self.num_nodes, device=device), requires_grad=False)
+        self.E_min, self.E_max = e_min, e_max
 
-def grad_f_from(deltas, tJ):
-    @jit
-    def grad_f(k):
-        phase = jnp.exp(1j * (deltas @ k))
-        coeff = 1j * deltas
-        return -tJ * jnp.sum(coeff * phase[:, None], axis=0)
-    return grad_f
+        # Edge-plasticity hyperparams
+        self.eta0 = eta0
+        self.mu0 = mu0
+        self.gamma = gamma
+        self.delta = delta
 
-# ----- K/K′ CONSTRUCTION AND DAMPED NEWTON -----
-def analytic_K_from_phases(A):
-    p = jnp.array([-2.0 * jnp.pi / 3.0, +2.0 * jnp.pi / 3.0])
-    return jnp.linalg.solve(A.T, p)
+        # Edge regularizers
+        self.lambda_edge_sparse = lambda_edge_sparse
+        self.lambda_edge_smooth = lambda_edge_smooth
 
-def analytic_Kprime_from_phases(A):
-    p = jnp.array([+2.0 * jnp.pi / 3.0, -2.0 * jnp.pi / 3.0])
-    return jnp.linalg.solve(A.T, p)
+        # Buffers for safe update
+        self.pending_dE = None
+        self.prev_E = None
 
-def newton_refine_K(k0, f_k, grad_f, max_iter=CFG.newton_max_iter, tol=CFG.newton_tol, det_tol=CFG.det_tol):
-    k = k0
-    alpha = 1.0
-    for _ in range(int(max_iter)):
-        f = f_k(k)
-        g = grad_f(k)
-        J = jnp.stack([jnp.real(g), jnp.imag(g)], axis=0)
-        F = jnp.array([jnp.real(f), jnp.imag(f)])
-        detJ = jnp.linalg.det(J)
-        if jnp.abs(detJ) < det_tol:
-            alpha *= 0.5
-            if alpha < 1e-6:
-                break
-        else:
-            dk = jnp.linalg.solve(J, F)
-            k_new = k - alpha * dk
-            if jnp.linalg.norm(alpha * dk) < tol:
-                k = k_new
-                break
-            k = k_new
-            alpha = min(1.0, alpha * 2.0)
-    return k
+    def set_phase(self, phase: str):
+        assert phase in ["liquid", "solid"]
+        self.phase = phase
 
-# ----- VELOCITY METRICS + CONVERGENCE -----
-def vF_from_grad_at_K(K, grad_f):
-    g = grad_f(K)
-    g_norm = jnp.sqrt(jnp.real(g @ jnp.conj(g)))   # ||∇f|| (J·m)
-    return float(g_norm / (jnp.sqrt(2.0) * hbar))  # vF = ||∇f|| / (√2 ħ)
+    def build_Ahat(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        A_raw = F.softplus(self.E) * self.A_mask + torch.eye(self.num_nodes, device=self.device)
+        deg = A_raw.sum(dim=-1)
+        D_inv_sqrt = torch.diag(torch.pow(deg + 1e-8, -0.5))
+        return D_inv_sqrt @ A_raw @ D_inv_sqrt, A_raw
 
-def estimate_vf_energy_fit(K, energies, a, q_abs_rel=CFG.q_rel_default, directions=CFG.directions_ring, subtract_mean=False):
-    q_abs = q_abs_rel / a
-    angles = jnp.linspace(0.0, 2.0 * jnp.pi, int(directions), endpoint=False)
-    us = jnp.stack([jnp.cos(angles), jnp.sin(angles)], axis=1)
-    def sample(u):
-        k = K + q_abs * u
-        E = energies(k)
-        return jnp.max(E)
-    Ec = jnp.array([sample(u) for u in us])
-    if subtract_mean:
-        vF = jnp.mean(Ec - Ec.mean()) / (hbar * q_abs)
-    else:
-        vF = jnp.mean(Ec) / (hbar * q_abs)
-    spread = jnp.std(Ec) / (hbar * q_abs)
-    return float(vF), float(spread), us, Ec
+    def _compute_dE(self, h_mean_nodes: torch.Tensor, fisher_scalar: float) -> torch.Tensor:
+        fs = max(float(fisher_scalar), 1e-8)
+        eta_e = self.eta0 / (1.0 + self.gamma * fs)
+        mu_e = self.mu0 * (1.0 + self.delta * fs)
+        corr = torch.matmul(h_mean_nodes, h_mean_nodes.t())  # (N,N)
+        dE = eta_e * corr - mu_e * self.E
+        return dE * self.A_mask
 
-def vf_fit_convergence(K, energies, a):
-    q_rels = jnp.array([5e-10, 1e-9, 2e-9])  # relative to a
-    dirs = [32, 64, 128]
-    vals = []
-    for q_rel in q_rels:
-        for d in dirs:
-            vF, spread, _, _ = estimate_vf_energy_fit(K, energies, a, q_abs_rel=float(q_rel), directions=int(d))
-            vals.append((float(q_rel), int(d), float(vF), float(spread)))
-    return vals  # list of tuples
+    def apply_edge_update(self):
+        if self.pending_dE is not None:
+            with torch.no_grad():
+                if self.prev_E is None:
+                    self.prev_E = self.E.detach().clone()
+                self.E = nn.Parameter((self.E + self.pending_dE).clamp(self.E_min, self.E_max), requires_grad=False)
+            self.pending_dE = None
 
-# ----- ADAPTIVE BERRY PHASE -----
-def berry_phase_discrete(K, f_k, a, radius_rel, directions):
-    r = radius_rel / a
-    angles = jnp.linspace(0.0, 2.0 * jnp.pi, int(directions), endpoint=False)
-    ks = K + r * jnp.stack([jnp.cos(angles), jnp.sin(angles)], axis=1)
-    phases = jnp.array([jnp.angle(f_k(k)) for k in ks])
-    diffs = phases[(jnp.arange(int(directions)) + 1) % int(directions)] - phases
-    diffs = jnp.arctan2(jnp.sin(diffs), jnp.cos(diffs))
-    total_winding = jnp.sum(diffs)
-    gamma = 0.5 * total_winding
-    return float(gamma), float(total_winding), ks, phases
+    def edge_regularizer(self, A_raw: torch.Tensor) -> torch.Tensor:
+        off_diag = A_raw - torch.eye(self.num_nodes, device=self.device)
+        L_sparse = self.lambda_edge_sparse * torch.sum(torch.abs(off_diag))
+        masked_E = self.E * self.A_mask
+        mean_E = (masked_E.sum() / (self.A_mask.sum() + 1e-8))
+        L_smooth = self.lambda_edge_smooth * torch.sum((masked_E - mean_E).pow(2))
+        return L_sparse + L_smooth
 
-def berry_phase_adaptive(K, f_k, a, base_radius_rel=CFG.berry_radius_base_rel, base_dirs=CFG.berry_dirs_base):
-    candidates = [
-        (base_radius_rel, base_dirs),
-        (base_radius_rel * 2.0, base_dirs),
-        (base_radius_rel / 2.0, base_dirs * 2),
-        (base_radius_rel, base_dirs * 2),
-    ]
-    results = []
-    for r_rel, ndir in candidates:
-        gamma, wind, ks, phases = berry_phase_discrete(K, f_k, a, r_rel, ndir)
-        results.append((gamma, wind, r_rel, ndir, ks, phases))
-    target = 2.0 * jnp.pi
-    idx = int(jnp.argmin(jnp.array([abs(abs(w) - target) for (_, w, _, _, _, _) in results])))
-    return results[idx], results  # best, all tried
+    def edge_energy_and_drift(self) -> Tuple[float, float]:
+        with torch.no_grad():
+            A_raw = F.softplus(self.E) * self.A_mask + torch.eye(self.num_nodes, device=self.device)
+            off_diag = A_raw - torch.eye(self.num_nodes, device=self.device)
+            energy = off_diag.mean().item()
+            drift = 0.0
+            if self.prev_E is not None:
+                drift = torch.norm(self.E - self.prev_E, p='fro').item()
+            self.prev_E = self.E.detach().clone()
+            return energy, drift
 
-# ----- SYMMETRY AUDITS -----
-def c3_rotation_matrix():
-    c = -0.5
-    s = jnp.sqrt(3.0) / 2.0
-    return jnp.array([[c, -s],
-                      [s,  c]])
+    def forward(self, x: torch.Tensor, fisher_scalar: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
+        A_hat, A_raw = self.build_Ahat()
+        bsz = x.size(0)
+        h = self.activation(self.input_proj(x))
+        if self.phase == "liquid": h = self.dropout(h)
+        h = h.unsqueeze(1).repeat(1, self.num_nodes, 1)  # (B,N,H)
 
-def audit_c3_invariance(f_k, b1, b2, samples=6, atol=CFG.periodicity_atol):
-    R = c3_rotation_matrix()
-    ks = [
-        0.15 * b1 + 0.10 * b2,
-        0.33 * b1 + 0.07 * b2,
-        0.42 * b1 + 0.21 * b2,
-        0.05 * b1 + 0.47 * b2,
-        0.27 * b1 + 0.36 * b2,
-        0.49 * b1 + 0.12 * b2,
-    ][:int(samples)]
-    for k in ks:
-        lhs = jnp.abs(f_k(k))
-        rhs = jnp.abs(f_k(R @ k))
-        if not bool(jnp.allclose(lhs, rhs, atol=atol)):
-            return False
-    return True
+        for layer in self.gcn_layers:
+            h_flat = h.view(bsz * self.num_nodes, -1)
+            h_lin = self.activation(layer(h_flat)).view(bsz, self.num_nodes, -1)
+            if self.phase == "liquid": h_lin = self.dropout(h_lin)
+            h = torch.matmul(A_hat, h_lin)
 
-def energies_with_tau(k, tau_shift, a1, a2, tJ, nnn, eps_diag_base):
-    deltas_shift = jnp.stack([tau_shift, tau_shift - a1, tau_shift - a2], axis=0)
-    phase = jnp.exp(1j * (deltas_shift @ k))
-    f = -tJ * jnp.sum(phase)
-    e = eps_diag_base(k)
-    H = jnp.array([[e + 0.0j, f],
-                   [jnp.conj(f), e + 0.0j]], dtype=jnp.complex128)
-    return jnp.linalg.eigvalsh(H)
+        if self.phase == "liquid":
+            h_mean_nodes = h.mean(dim=0)  # (N,H)
+            # Store dE to be applied after optimizer step
+            self.pending_dE = self._compute_dE(h_mean_nodes, fisher_scalar)
 
-def audit_tau_gauge_invariance(a1, a2, b1, b2, tJ, nnn, eps_diag_base, atol=CFG.gauge_atol):
-    shifts = [jnp.array([0.0, 0.0]), a1, a2, a1 + a2, -a1, -a2]
-    kpoints = [0.23 * b1 + 0.41 * b2, 0.37 * b1 + 0.19 * b2, 0.11 * b1 + 0.29 * b2]
-    base = [energies_with_tau(k, jnp.array([0.0, 0.0]), a1, a2, tJ, nnn, eps_diag_base) for k in kpoints]
-    for sh in shifts:
-        cur = [energies_with_tau(k, sh, a1, a2, tJ, nnn, eps_diag_base) for k in kpoints]
-        for E0, E1 in zip(base, cur):
-            if not bool(jnp.allclose(E0, E1, atol=atol)):
-                return False
-    return True
+        out = self.activation(self.out_proj(h.mean(dim=1)))
+        if self.phase == "liquid": out = self.dropout(out)
+        return out, A_raw
 
-# ----- CURVATURE (adaptive + Richardson) & LINEAR REGIME -----
-def curvature_central(K, u, energies, a, h_rel):
-    h = h_rel / a
-    E_plus = lambda kk: jnp.max(energies(kk))
-    E0 = E_plus(K)
-    Ep = E_plus(K + h * u)
-    Em = E_plus(K - h * u)
-    return float((Ep - 2.0 * E0 + Em) / (h * h))
+# =========================
+# 3. Domain adapters + full model
+# =========================
+class DomainAdapter(nn.Module):
+    def __init__(self, feature_dim: int, hidden_dim: int, num_classes: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(feature_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+        )
+    def forward(self, f): return self.net(f)
 
-def curvature_adaptive(K, u, energies, a, h_rel_base=CFG.h_rel_default):
-    # Two-step Richardson extrapolation: kappa(h) ~ kappa_true + C h^2
-    h1 = h_rel_base
-    h2 = h_rel_base / 2.0
-    k1 = curvature_central(K, u, energies, a, h1)
-    k2 = curvature_central(K, u, energies, a, h2)
-    # Extrapolate k_true ≈ (4*k2 - k1)/3
-    k_true = (4.0 * k2 - k1) / 3.0
-    err_est = abs(k2 - k_true)  # heuristic error estimate of discretization
-    return float(k_true), float(err_est)
+class GrapheneModel(nn.Module):
+    def __init__(
+        self, enc_dim: int, hidden_dim: int, feat_dim: int, adapter_hidden: int,
+        grid_h: int, grid_w: int, device: torch.device,
+    ):
+        super().__init__()
+        self.device = device
+        self.encoder = ResNetEncoder(output_dim=enc_dim).to(device)
+        self.backbone = GrapheneHexBackbone(
+            input_dim=enc_dim, hidden_dim=hidden_dim, feature_dim=feat_dim,
+            grid_h=grid_h, grid_w=grid_w, device=device,
+            num_layers=3, dropout_p=0.2,
+            eta0=1e-3, mu0=1e-4, gamma=50.0, delta=10.0,
+            lambda_edge_sparse=1e-5, lambda_edge_smooth=1e-5
+        ).to(device)
+        self.adapters = nn.ModuleDict()
+        self.feat_dim = feat_dim
+        self.adapter_hidden = adapter_hidden
 
-def curvature_max_over_directions(K, energies, a, directions=CFG.directions_curvature):
-    angles = jnp.linspace(0.0, 2.0 * jnp.pi, int(directions), endpoint=False)
-    us = jnp.stack([jnp.cos(angles), jnp.sin(angles)], axis=1)
-    kappas = []
-    errs = []
-    for u in us:
-        kt, et = curvature_adaptive(K, u, energies, a)
-        kappas.append(abs(kt))
-        errs.append(et)
-    return float(max(kappas)), float(max(errs))
+    def set_phase(self, phase: str): self.backbone.set_phase(phase)
 
-def linear_regime_radius(K, energies, a, vF, directions=CFG.directions_curvature, eps_rel=1e-6, h_candidates_rel=(1e-9, 2e-9, 5e-9, 1e-8)):
-    angles = jnp.linspace(0.0, 2.0 * jnp.pi, int(directions), endpoint=False)
-    us = jnp.stack([jnp.cos(angles), jnp.sin(angles)], axis=1)
-    best = 0.0
-    for h_rel in h_candidates_rel:
-        h = h_rel / a
-        ok = True
-        for u in us:
-            E_plus = jnp.max(energies(K + h * u))
-            dev = jnp.abs((E_plus - hbar * vF * h) / (hbar * vF * h))
-            if dev > eps_rel:
-                ok = False
-                break
-        if ok:
-            best = h_rel
-    return float(best)
+    def add_domain(self, name: str, num_classes: int):
+        self.adapters[name] = DomainAdapter(self.feat_dim, self.adapter_hidden, num_classes).to(self.device)
 
-# ----- SCALING AUDITS WITH EXPANDED SAMPLING -----
-def stats_linear_fit(x, y):
-    x = jnp.array(x); y = jnp.array(y)
-    c = (x @ y) / (x @ x)
-    residuals = y - c * x
-    rss = jnp.sum(residuals ** 2)
-    tss = jnp.sum((y - jnp.mean(y)) ** 2)
-    r2 = 1.0 - float(rss / tss) if tss > 0 else 1.0
-    rel_resid = float(jnp.sqrt(jnp.mean(residuals ** 2)) / jnp.mean(jnp.abs(y)))
-    return float(c), rel_resid, r2
+    def forward(self, x: torch.Tensor, domain_name: str, fisher_scalar: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
+        z = self.encoder(x)
+        f, A_raw = self.backbone(z, fisher_scalar=fisher_scalar)
+        logits = self.adapters[domain_name](f)
+        return logits, A_raw
 
-def scaling_vf_vs_t(A, deltas, tJ, a_cc, num_points=CFG.scaling_points):
-    ts = jnp.linspace(0.5 * tJ, 1.5 * tJ, int(num_points))
-    vfs = []
-    for ti in ts:
-        @jit
-        def f_k_t(k):
-            return -ti * jnp.sum(jnp.exp(1j * (deltas @ k)))
-        grad_f_t = grad_f_from(deltas, ti)
-        K = newton_refine_K(analytic_K_from_phases(A), f_k_t, grad_f_t)
-        g = grad_f_t(K)
-        g_norm = jnp.sqrt(jnp.real(g @ jnp.conj(g)))
-        vF_t = g_norm / (jnp.sqrt(2.0) * hbar)
-        vfs.append(float(vF_t))
-    c_fit, rel_resid, r2 = stats_linear_fit(ts, vfs)
-    slope_t_theory = float((1.5 * a_cc) / hbar)
-    return float(c_fit), float(rel_resid), float(r2), slope_t_theory
+# =========================
+# 4. Memory module (EWC + replay + coercivity)
+# =========================
+@dataclass
+class DomainMemory:
+    params_old: Dict[str, torch.Tensor] = field(default_factory=dict)
+    importance: Dict[str, torch.Tensor] = field(default_factory=dict)
+    replay_x: Optional[torch.Tensor] = None
+    replay_y: Optional[torch.Tensor] = None
+    fisher_scalar: float = 0.0
 
-def scaling_vf_vs_a(tJ, num_points=CFG.scaling_points):
-    as_ = jnp.linspace(0.9 * 2.46e-10, 1.1 * 2.46e-10, int(num_points))
-    vfs = []
-    for ai in as_:
-        a1_i = jnp.array([0.5 * ai,  jnp.sqrt(3.0) * ai / 2.0])
-        a2_i = jnp.array([-0.5 * ai, jnp.sqrt(3.0) * ai / 2.0])
-        A_i = jnp.stack([a1_i, a2_i], axis=1)
-        a_cc_i = ai / jnp.sqrt(3.0)
-        tau_i = jnp.array([0.0, a_cc_i])
-        deltas_i = jnp.stack([tau_i, tau_i - a1_i, tau_i - a2_i], axis=0)
+class MemoryModule:
+    def __init__(
+        self, lambda_reg: float = 180.0, replay_size: int = 5000,
+        base_c: float = 1.0, alpha_c: float = 8.0, scale_c: float = 10000.0, c_max: float = 30.0,
+    ):
+        self.lambda_reg = lambda_reg
+        self.replay_size = replay_size
+        self.base_c = base_c
+        self.alpha_c = alpha_c
+        self.scale_c = scale_c
+        self.c_max = c_max
+        self.memories: Dict[str, DomainMemory] = {}
+        self.coercivity: Dict[str, float] = {}
 
-        @jit
-        def f_k_a(k):
-            return -tJ * jnp.sum(jnp.exp(1j * (deltas_i @ k)))
-        grad_f_a = grad_f_from(deltas_i, tJ)
-        K_i = newton_refine_K(analytic_K_from_phases(A_i), f_k_a, grad_f_a)
-        g = grad_f_a(K_i)
-        g_norm = jnp.sqrt(jnp.real(g @ jnp.conj(g)))
-        vF_a = g_norm / (jnp.sqrt(2.0) * hbar)
-        vfs.append(float(vF_a))
-    c_fit, rel_resid, r2 = stats_linear_fit(as_, vfs)
-    slope_a_theory = float((1.5 * tJ) / (jnp.sqrt(3.0) * hbar))
-    return float(c_fit), float(rel_resid), float(r2), slope_a_theory
+    def set_coercivity(self, name: str, value: float):
+        self.coercivity[name] = float(min(value, self.c_max))
 
-# ----- EXPORT ARTIFACTS -----
-def export_json(path, data):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
+    def get_coercivity(self, name: str) -> float:
+        return self.coercivity.get(name, self.base_c)
 
-def export_csv_ring(path, us, Ec, label="K"):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["label", "ux", "uy", "E_plus_J"])
-        for u, e in zip(us, Ec):
-            writer.writerow([label, float(u[0]), float(u[1]), float(e)])
+    def _fisher_scalar(self, fisher: Dict[str, torch.Tensor]) -> float:
+        vals = [v.mean() for v in fisher.values() if v is not None]
+        return torch.stack(vals).mean().item() if vals else 0.0
 
-def export_csv_phase(path, ks, phases, label="K"):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["label", "kx", "ky", "phase_rad"])
-        for k, ph in zip(ks, phases):
-            writer.writerow([label, float(k[0]), float(k[1]), float(ph)])
+    def _coercivity_from_fisher(self, fs: float) -> float:
+        fs = max(fs, 1e-8)
+        return float(min(self.base_c + self.alpha_c * math.log(1 + self.scale_c * fs), self.c_max))
 
-# ----- MAIN AUDIT -----
-def run_audit(a=2.46e-10, t_eV=2.8, tprime_eV=0.0, export_dir=None):
-    tJ = t_eV * eV_to_J
-    tprimeJ = tprime_eV * eV_to_J
-    tprime_ratio = float(tprime_eV / t_eV) if t_eV != 0 else 0.0
-    relax_isotropy = tprime_ratio >= CFG.tprime_relax_threshold
+    def save_domain(self, model: nn.Module, name: str, dataloader: DataLoader, device: torch.device, logger: SimpleLogger):
+        logger.log(f"[Memory] Save domain {name}")
+        model.train()
+        criterion = nn.CrossEntropyLoss()
+        fisher = {n: torch.zeros_like(p, device=device) for n, p in model.named_parameters()}
 
-    # Build lattice and model
-    a1, a2, A, b1, b2, a_cc, tau, deltas, nnn = build_lattice(a)
-    vF_analytic = vF_analytic_from(a_cc, tJ)
-    f_k, eps_diag = make_f_eps(deltas, nnn, tJ, tprimeJ)
-    h_k, energies = make_hamiltonian(f_k, eps_diag)
-    grad_f = grad_f_from(deltas, tJ)
+        Xs, Ys = [], []
+        for x, y in dataloader:
+            x, y = x.to(device), y.to(device)
+            Xs.append(x); Ys.append(y)
+            model.zero_grad()
+            logits, _ = model(x, domain_name=name, fisher_scalar=0.0)
+            loss = criterion(logits, y)
+            loss.backward()
+            for n, p in model.named_parameters():
+                if p.grad is not None: fisher[n] += p.grad.detach() ** 2
 
-    # Geometry checks
-    delta_lengths = jnp.linalg.norm(deltas, axis=1)
-    delta_ok = bool(jnp.allclose(delta_lengths, a_cc, rtol=0, atol=1e-14))
+        for n in fisher: fisher[n] /= max(len(dataloader), 1)
+        params_old = {n: p.detach().clone() for n, p in model.named_parameters()}
+        X_all = torch.cat(Xs, dim=0); Y_all = torch.cat(Ys, dim=0)
+        n = X_all.size(0)
+        if n > self.replay_size:
+            idx = torch.randperm(n, device=device)[: self.replay_size]
+            X_all, Y_all = X_all[idx], Y_all[idx]
 
-    # Dirac valleys
-    K0 = analytic_K_from_phases(A)
-    Kp0 = analytic_Kprime_from_phases(A)
-    K = newton_refine_K(K0, f_k, grad_f)
-    Kp = newton_refine_K(Kp0, f_k, grad_f)
-    fK = f_k(K); fKp = f_k(Kp)
-    dirac_K = bool(jnp.abs(fK) < 1e-12 * tJ)
-    dirac_Kp = bool(jnp.abs(fKp) < 1e-12 * tJ)
+        fs = self._fisher_scalar(fisher)
+        mem = DomainMemory(params_old=params_old, importance=fisher, replay_x=X_all, replay_y=Y_all, fisher_scalar=fs)
+        self.memories[name] = mem
+        c = self._coercivity_from_fisher(fs)
+        self.set_coercivity(name, c)
+        logger.log(f" -> fisher_scalar[{name}] = {fs:.6f}")
+        logger.log(f" -> coercivity[{name}] = {c:.3f}")
 
-    # Baseline audits
-    ktest = 0.1 * b1 + 0.1 * b2
-    H = h_k(ktest)
-    hermiticity = bool(jnp.allclose(H, H.conj().T, atol=CFG.hermiticity_atol))
-    ph_sym = bool(jnp.allclose(jnp.sum(energies(ktest)) - 2.0 * eps_diag(ktest), 0.0, atol=CFG.hermiticity_atol))
-    periodic_b1 = bool(jnp.allclose(f_k(ktest + b1), f_k(ktest), atol=CFG.periodicity_atol))
-    periodic_b2 = bool(jnp.allclose(f_k(ktest + b2), f_k(ktest), atol=CFG.periodicity_atol))
+    def reg_loss(self, model: nn.Module, active_name: str, device: torch.device) -> torch.Tensor:
+        if not self.memories: return torch.tensor(0.0, device=device)
+        loss = torch.tensor(0.0, device=device)
+        for name, mem in self.memories.items():
+            if name == active_name: continue
+            c = self.get_coercivity(name)
+            for n, p in model.named_parameters():
+                diff = p - mem.params_old[n]
+                loss = loss + c * (mem.importance[n] * diff.pow(2)).sum()
+        return self.lambda_reg * loss / max(len(self.memories), 1)
 
-    # Velocities and isotropy (K and K′) + convergence samples
-    vf_grad_K = vF_from_grad_at_K(K, grad_f)
-    vf_grad_Kp = vF_from_grad_at_K(Kp, grad_f)
-    subtract_mean = (tprimeJ != 0.0)
-    vf_fit_K, vf_spread_K, usK, EcK = estimate_vf_energy_fit(K, energies, a, q_abs_rel=CFG.q_rel_default, directions=CFG.directions_ring, subtract_mean=subtract_mean)
-    vf_fit_Kp, vf_spread_Kp, usKp, EcKp = estimate_vf_energy_fit(Kp, energies, a, q_abs_rel=CFG.q_rel_default, directions=CFG.directions_ring, subtract_mean=subtract_mean)
-    vf_conv_K = vf_fit_convergence(K, energies, a)
-    vf_conv_Kp = vf_fit_convergence(Kp, energies, a)
+    def sample_replay(self, device: torch.device, per_domain: int) -> Dict[str, Tuple[torch.Tensor, torch.Tensor]]:
+        batches = {}
+        for name, mem in self.memories.items():
+            if mem.replay_x is None or mem.replay_y is None: continue
+            n = mem.replay_x.size(0)
+            k = min(per_domain, n)
+            if k == 0: continue
+            idx = torch.randperm(n, device=device)[:k]
+            batches[name] = (mem.replay_x[idx], mem.replay_y[idx])
+        return batches
 
-    # Berry phases (adaptive)
-    (gamma_K, wind_K, rK, nK, ksK, phasesK), berry_trials_K = berry_phase_adaptive(K, f_k, a)
-    (gamma_Kp, wind_Kp, rKp, nKp, ksKp, phasesKp), berry_trials_Kp = berry_phase_adaptive(Kp, f_k, a)
+# =========================
+# 5. Learner with logs and cosine schedule (apply safe edge update after opt.step)
+# =========================
+class ContinualLearner:
+    def __init__(
+        self, model: GrapheneModel, memory: MemoryModule, device: torch.device,
+        lr: float = 1e-3, weight_decay: float = 0.0, replay_per_domain: int = 256, replay_scale: float = 1.0,
+        logger: Optional[SimpleLogger] = None
+    ):
+        self.model = model
+        self.memory = memory
+        self.device = device
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.replay_per_domain = replay_per_domain
+        self.replay_scale = replay_scale
+        self.logger = logger or SimpleLogger()
 
-    # Symmetries
-    c3_ok = audit_c3_invariance(f_k, b1, b2, samples=6, atol=CFG.periodicity_atol)
-    tau_ok = audit_tau_gauge_invariance(a1, a2, b1, b2, tJ, nnn, eps_diag, atol=CFG.gauge_atol)
+    def _opt(self): return optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
-    # Curvature & linear regime (K and K′) with adaptive + Richardson
-    kappa_max_K, kappa_err_K = curvature_max_over_directions(K, energies, a, directions=CFG.directions_curvature)
-    kappa_max_Kp, kappa_err_Kp = curvature_max_over_directions(Kp, energies, a, directions=CFG.directions_curvature)
-    r_lin_K = linear_regime_radius(K, energies, a, vf_grad_K, directions=CFG.directions_curvature, eps_rel=1e-6)
-    r_lin_Kp = linear_regime_radius(Kp, energies, a, vf_grad_Kp, directions=CFG.directions_curvature, eps_rel=1e-6)
+    def train_domain(self, name: str, train_loader: DataLoader, val_loader: Optional[DataLoader] = None, epochs: int = 25):
+        self.logger.log(f"\n========== Train domain: {name} ==========")
+        self.model.set_phase("liquid")
+        self.model.train()
+        opt = self._opt()
+        sched = optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
+        crit = nn.CrossEntropyLoss()
 
-    # Scaling audits (expanded sampling + stats)
-    c_t, resid_t, r2_t, slope_t_theory = scaling_vf_vs_t(A, deltas, tJ, a_cc, num_points=CFG.scaling_points)
-    c_a, resid_a, r2_a, slope_a_theory = scaling_vf_vs_a(tJ, num_points=CFG.scaling_points)
+        fisher_scalar_for_liquid = 0.0
 
-    # Environment and timestamp (UTC, ISO 8601 with Z)
-    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    env = {
-        "python_version": sys.version,
-        "jax_version": getattr(jax, "__version__", "unknown"),
-        "dtype": "float64",
-        "device_kind": jax.default_backend(),
-        "constants_metadata": CONSTANTS_METADATA,
-    }
+        for ep in range(1, epochs+1):
+            tot_loss = 0.0; ce_tot = 0.0; rep_tot = 0.0; reg_tot = 0.0; edge_tot = 0.0
+            corr = 0; total = 0
 
-    report = {
-        "timestamp": timestamp,
-        "environment": env,
-        "params": {
-            "a_m": float(a),
-            "t_eV": float(t_eV),
-            "tprime_eV": float(tprime_eV),
-            "a_cc_m": float(a_cc),
-            "tprime_ratio": float(tprime_ratio),
-        },
-        "derived": {
-            "vF_analytic_m_per_s": float(vF_analytic),
-        },
-        "audits": {
-            "delta_lengths_equal_acc": delta_ok,
-            "hermiticity": hermiticity,
-            "particle_hole": ph_sym if tprimeJ == 0.0 else None,
-            "period_b1": periodic_b1,
-            "period_b2": periodic_b2,
-            "dirac_at_K": dirac_K,
-            "dirac_at_Kprime": dirac_Kp,
-            "fK_abs_over_t": float(jnp.abs(fK) / tJ),
-            "fKprime_abs_over_t": float(jnp.abs(fKp) / tJ),
-            "K_coords": [float(K[0]), float(K[1])],
-            "Kprime_coords": [float(Kp[0]), float(Kp[1])],
-            "vf_grad_K_m_per_s": vf_grad_K,
-            "vf_grad_Kprime_m_per_s": vf_grad_Kp,
-            "vf_fit_K_m_per_s": vf_fit_K,
-            "vf_fit_Kprime_m_per_s": vf_fit_Kp,
-            "vf_fit_spread_K_m_per_s": vf_spread_K,
-            "vf_fit_spread_Kprime_m_per_s": vf_spread_Kp,
-            "vf_grad_over_analytic_K": float(vf_grad_K / vF_analytic),
-            "vf_grad_over_analytic_Kprime": float(vf_grad_Kp / vF_analytic),
-            "vf_fit_over_analytic_K": float(vf_fit_K / vF_analytic),
-            "vf_fit_over_analytic_Kprime": float(vf_fit_Kp / vF_analytic),
-            "berry_phase_gamma_K": float(gamma_K),
-            "berry_phase_gamma_Kprime": float(gamma_Kp),
-            "phase_winding_total_K": float(wind_K),
-            "phase_winding_total_Kprime": float(wind_Kp),
-            "berry_trials_K": [{"radius_rel": float(rr), "dirs": int(nn), "gamma": float(ga), "wind": float(wi)} for (ga, wi, rr, nn, _, _) in berry_trials_K],
-            "berry_trials_Kprime": [{"radius_rel": float(rr), "dirs": int(nn), "gamma": float(ga), "wind": float(wi)} for (ga, wi, rr, nn, _, _) in berry_trials_Kp],
-            "c3_invariance": c3_ok,
-            "tau_gauge_invariance": tau_ok,
-            "curvature_max_K_J": float(kappa_max_K),
-            "curvature_err_K_J": float(kappa_err_K),
-            "curvature_max_Kprime_J": float(kappa_max_Kp),
-            "curvature_err_Kprime_J": float(kappa_err_Kp),
-            "linear_regime_radius_rel_K": float(r_lin_K),
-            "linear_regime_radius_rel_Kprime": float(r_lin_Kp),
-            "scaling_slope_t_fit": float(c_t),
-            "scaling_slope_t_theory": float(slope_t_theory),
-            "scaling_residual_t": float(resid_t),
-            "scaling_R2_t": float(r2_t),
-            "scaling_slope_a_fit": float(c_a),
-            "scaling_slope_a_theory": float(slope_a_theory),
-            "scaling_residual_a": float(resid_a),
-            "scaling_R2_a": float(r2_a),
-            "vf_fit_convergence_K": [{"q_rel": float(q), "dirs": int(d), "vF": float(v), "spread": float(s)} for (q, d, v, s) in vf_conv_K],
-            "vf_fit_convergence_Kprime": [{"q_rel": float(q), "dirs": int(d), "vF": float(v), "spread": float(s)} for (q, d, v, s) in vf_conv_Kp],
-        },
-        "notes": {
-            "isotropy_tprime_relaxed": relax_isotropy,
-            "berry_selected_K": {"radius_rel": float(rK), "dirs": int(nK)},
-            "berry_selected_Kprime": {"radius_rel": float(rKp), "dirs": int(nKp)},
-        }
-    }
+            if self.memory.memories:
+                fisher_scalar_for_liquid = float(sum(m.fisher_scalar for m in self.memory.memories.values()) / len(self.memory.memories))
 
-    # Fail-hard assertions with reasoned tolerances + t′ handling
-    assert delta_ok, "NN lengths mismatch a_cc."
-    assert hermiticity, "Hamiltonian not Hermitian."
-    assert periodic_b1 and periodic_b2, "Bloch periodicity failed."
-    assert dirac_K and dirac_Kp and report["audits"]["fK_abs_over_t"] < 1e-12 and report["audits"]["fKprime_abs_over_t"] < 1e-12, "Dirac condition failed."
-    if tprimeJ == 0.0:
-        assert ph_sym, "Particle–hole symmetry failed at t'=0."
-    # vF checks
-    assert abs(report["audits"]["vf_grad_over_analytic_K"] - 1.0) < CFG.vf_tol_rel, "vF (grad, K) mismatch."
-    assert abs(report["audits"]["vf_grad_over_analytic_Kprime"] - 1.0) < CFG.vf_tol_rel, "vF (grad, K') mismatch."
-    assert abs(report["audits"]["vf_fit_over_analytic_K"] - 1.0) < CFG.vf_tol_rel, "vF (fit, K) mismatch."
-    assert abs(report["audits"]["vf_fit_over_analytic_Kprime"] - 1.0) < CFG.vf_tol_rel, "vF (fit, K') mismatch."
-    # Isotropy tolerance: relaxed when t′ is large (Dirac cone approximation weakens)
-    iso_tol = CFG.tprime_isotropy_relax if relax_isotropy else CFG.vf_tol_rel
-    assert (report["audits"]["vf_fit_spread_K_m_per_s"] / vF_analytic) < iso_tol, "Isotropy spread too large (K)."
-    assert (report["audits"]["vf_fit_spread_Kprime_m_per_s"] / vF_analytic) < iso_tol, "Isotropy spread too large (K')."
-    # Berry: enforce ±π
-    assert abs(report["audits"]["berry_phase_gamma_K"] - jnp.pi) < CFG.berry_tol_abs, "Berry phase at K not π."
-    assert abs(report["audits"]["berry_phase_gamma_Kprime"] + jnp.pi) < CFG.berry_tol_abs, "Berry phase at K' not -π."
-    assert c3_ok, "C3 rotational invariance failed."
-    assert tau_ok, "Tau gauge invariance failed."
-    # Curvature tolerances: tie to adaptive error estimate and a small absolute floor
-    # Bound = max(10 * err_est, minimal_absolute_floor)
-    curv_floor = CFG.curvature_min_abs_bound * tJ / (a * a)
-    assert report["audits"]["curvature_max_K_J"] < max(10.0 * report["audits"]["curvature_err_K_J"], curv_floor), "Curvature too large near K (beyond adaptive bound)."
-    assert report["audits"]["curvature_max_Kprime_J"] < max(10.0 * report["audits"]["curvature_err_Kprime_J"], curv_floor), "Curvature too large near K′ (beyond adaptive bound)."
-    # Scaling: expanded points should yield near-perfect linearity
-    assert abs(c_t - slope_t_theory) / slope_t_theory < CFG.vf_tol_rel, "vF vs t slope mismatch."
-    assert report["audits"]["scaling_residual_t"] < CFG.vf_tol_rel and report["audits"]["scaling_R2_t"] > CFG.scaling_R2_min, "vF vs t residual/R2 too weak."
-    assert abs(c_a - slope_a_theory) / slope_a_theory < CFG.vf_tol_rel, "vF vs a slope mismatch."
-    assert report["audits"]["scaling_residual_a"] < CFG.vf_tol_rel and report["audits"]["scaling_R2_a"] > CFG.scaling_R2_min, "vF vs a residual/R2 too weak."
+            for x, y in train_loader:
+                x, y = x.to(self.device), y.to(self.device)
+                opt.zero_grad()
+                logits, A_raw = self.model(x, domain_name=name, fisher_scalar=fisher_scalar_for_liquid)
+                ce = crit(logits, y)
 
-    # Export artifacts (optional)
-    if export_dir:
-        os.makedirs(export_dir, exist_ok=True)
-        export_json(os.path.join(export_dir, "audit_report.json"), report)
-        export_csv_ring(os.path.join(export_dir, "ring_K.csv"), usK, EcK, label="K")
-        export_csv_ring(os.path.join(export_dir, "ring_Kprime.csv"), usKp, EcKp, label="Kprime")
-        export_csv_phase(os.path.join(export_dir, "phase_K.csv"), ksK, phasesK, label="K")
-        export_csv_phase(os.path.join(export_dir, "phase_Kprime.csv"), ksKp, phasesKp, label="Kprime")
+                replay_batches = self.memory.sample_replay(self.device, self.replay_per_domain)
+                rep = torch.tensor(0.0, device=self.device)
+                for dname, (xr, yr) in replay_batches.items():
+                    logits_r, _ = self.model(xr.to(self.device), domain_name=dname, fisher_scalar=0.0)
+                    rep = rep + crit(logits_r, yr.to(self.device))
 
-    # Human-readable printout
-    print("Audit report:")
-    print(f"  timestamp: {report['timestamp']}")
-    for section in ["environment", "params", "derived", "audits", "notes"]:
-        print(f"  {section}:")
-        for k, v in report[section].items():
-            print(f"    {k}: {v}")
+                reg = self.memory.reg_loss(self.model, active_name=name, device=self.device)
+                edge_reg = self.model.backbone.edge_regularizer(A_raw)
 
-    if relax_isotropy:
-        print("Note: t′/t is large; isotropy tolerance relaxed. Consider analytical warping benchmarks for deeper study.")
+                loss = ce + self.replay_scale * rep + reg + edge_reg
+                loss.backward()
+                opt.step()
 
-    return report
+                # SAFE: apply edge update after optimizer step, outside autograd
+                self.model.backbone.apply_edge_update()
 
+                bs = x.size(0)
+                tot_loss += loss.item() * bs
+                ce_tot += ce.item() * bs
+                rep_tot += rep.item() * bs
+                reg_tot += reg.item() * bs
+                edge_tot += edge_reg.item() * bs
+
+                preds = logits.argmax(-1)
+                corr += (preds == y).sum().item(); total += y.size(0)
+
+            n = len(train_loader.dataset)
+            train_acc = corr / total if total > 0 else 0.0
+            sched.step()
+
+            edge_energy, edge_drift = self.model.backbone.edge_energy_and_drift()
+
+            self.logger.log(
+                f"  Epoch {ep}/{epochs} | Loss: {tot_loss/n:.4f} | CE: {ce_tot/n:.4f} | "
+                f"Replay: {rep_tot/n:.4f} | Reg: {reg_tot/n:.6f} | Edge: {edge_tot/n:.6f} | "
+                f"Train acc: {train_acc:.3f} | edge_energy: {edge_energy:.4f} | edge_drift: {edge_drift:.4f}"
+            )
+
+            if val_loader is not None:
+                acc = self.evaluate_domain(name, val_loader, phase="solid")
+                self.logger.log(f"    Val acc ({name}): {acc:.3f}")
+
+        self.model.set_phase("solid")
+        self.memory.save_domain(self.model, name, train_loader, self.device, self.logger)
+
+    @torch.no_grad()
+    def evaluate_domain(self, name: str, data_loader: DataLoader, phase: str = "solid") -> float:
+        self.model.set_phase(phase)
+        self.model.eval()
+        corr = 0; total = 0
+        for x, y in data_loader:
+            x, y = x.to(self.device), y.to(self.device)
+            logits, _ = self.model(x, domain_name=name, fisher_scalar=0.0)
+            preds = logits.argmax(-1)
+            corr += (preds == y).sum().item(); total += y.size(0)
+        return corr / total if total > 0 else 0.0
+
+# =========================
+# 6. CIFAR-10 split dataset
+# =========================
+def build_cifar10_splits(device: torch.device, batch_size: int = 128):
+    tf_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.4914,0.4822,0.4465), std=(0.2470,0.2435,0.2616)),
+    ])
+    tf_test = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.4914,0.4822,0.4465), std=(0.2470,0.2435,0.2616)),
+    ])
+
+    train_ds = datasets.CIFAR10(root="./data", train=True, download=True, transform=tf_train)
+    test_ds = datasets.CIFAR10(root="./data", train=False, download=True, transform=tf_test)
+
+    pairs = [(0,1),(2,3),(4,5),(6,7),(8,9)]
+
+    def make_loader(ds, pair, shuffle):
+        a, b = pair
+        idx = [i for i, (_, y) in enumerate(ds) if y in (a, b)]
+        sub = Subset(ds, idx)
+        xs, ys = [], []
+        for x, y in sub:
+            xs.append(x)
+            ys.append(0 if y == a else 1)
+        X = torch.stack(xs).to(device)
+        Y = torch.tensor(ys, dtype=torch.long).to(device)
+        return DataLoader(TensorDataset(X, Y), batch_size=batch_size, shuffle=shuffle)
+
+    train_loaders, test_loaders = [], []
+    for p in pairs:
+        train_loaders.append(make_loader(train_ds, p, shuffle=True))
+        test_loaders.append(make_loader(test_ds, p, shuffle=False))
+    return train_loaders, test_loaders, pairs
+
+# =========================
+# 7. Main with forgetting curve
+# =========================
 def main():
-    parser = argparse.ArgumentParser(description="Audit-pure graphene TB toolkit with exportable artifacts (robust + convergence, CODATA via scipy).")
-    parser.add_argument("--a", type=float, default=2.46e-10, help="Bravais lattice constant (m)")
-    parser.add_argument("--t_eV", type=float, default=2.8, help="Nearest-neighbor hopping (eV)")
-    parser.add_argument("--tprime_eV", type=float, default=0.0, help="Next-nearest neighbor (eV)")
-    parser.add_argument("--export", type=str, default=None, help="Directory to export JSON/CSV artifacts")
-    # Tolerate extra args injected by Jupyter/Colab (e.g., -f kernel.json)
-    args, _ = parser.parse_known_args()
-    run_audit(a=args.a, t_eV=args.t_eV, tprime_eV=args.tprime_eV, export_dir=args.export)
+    set_seed(42)
+    logger = SimpleLogger()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.log(f"Device: {device}")
+
+    # Model sizes (tuned for CIFAR-10)
+    enc_dim = 256
+    hidden_dim = 256
+    feat_dim = 128
+    adapter_hidden = 128
+    grid_h, grid_w = 4, 4
+
+    # Memory/training configs
+    lambda_reg = 180.0
+    lr = 1e-3
+    replay_size = 5000
+    replay_per_domain = 256
+    replay_scale = 1.0
+    epochs_per_task = 25
+
+    model = GrapheneModel(enc_dim, hidden_dim, feat_dim, adapter_hidden, grid_h, grid_w, device)
+    memory = MemoryModule(lambda_reg=lambda_reg, replay_size=replay_size, base_c=1.0, alpha_c=8.0, scale_c=10000.0, c_max=30.0)
+    learner = ContinualLearner(model, memory, device, lr=lr, replay_per_domain=replay_per_domain, replay_scale=replay_scale, logger=logger)
+
+    train_loaders, test_loaders, label_pairs = build_cifar10_splits(device, batch_size=128)
+
+    domain_names = []
+    for a, b in label_pairs:
+        name = f"split_{a}_{b}"
+        domain_names.append(name)
+        model.add_domain(name, num_classes=2)
+
+    n_tasks = len(domain_names)
+    acc_matrix = [[0.0 for _ in range(n_tasks)] for _ in range(n_tasks)]
+
+    # Train sequentially and evaluate
+    for t_idx, name in enumerate(domain_names):
+        logger.log(f"\n=== Task {t_idx+1}/{n_tasks}: {name} ===")
+        learner.train_domain(name, train_loaders[t_idx], val_loader=test_loaders[t_idx], epochs=epochs_per_task)
+
+        for eval_idx in range(t_idx + 1):
+            eval_name = domain_names[eval_idx]
+            acc = learner.evaluate_domain(eval_name, test_loaders[eval_idx], phase="solid")
+            acc_matrix[t_idx][eval_idx] = acc
+            logger.log(f"  [After {name}] Test acc on {eval_name}: {acc:.3f}")
+
+        print("\nAccuracy matrix (rows=after task t, cols=eval task k):")
+        for i in range(t_idx + 1):
+            print("After task {:>2}: ".format(i+1) + " ".join(f"{acc_matrix[i][j]:.3f}" for j in range(t_idx + 1)))
+        print()
+
+    print("\nFinal coercivities:")
+    for d, c in memory.coercivity.items():
+        print(f"  {d}: {c:.3f}")
+
+    final_accs = [acc_matrix[n_tasks - 1][j] for j in range(n_tasks)]
+    avg_final = sum(final_accs) / n_tasks
+    print("\nFinal accuracies per task:")
+    for j, name in enumerate(domain_names):
+        print(f"  Task {j+1} ({name}): {final_accs[j]:.3f}")
+    print(f"\nAverage final accuracy over 5 tasks: {avg_final:.3f}")
+
+    # Plot forgetting curve: accuracy per task over time
+    plt.figure(figsize=(10, 6))
+    for task_idx in range(n_tasks):
+        times = list(range(task_idx, n_tasks))
+        accs = [acc_matrix[t][task_idx] for t in times]
+        plt.plot(times, accs, marker="o", label=f"Task {task_idx+1} ({domain_names[task_idx]})")
+    plt.xticks(range(n_tasks), [f"T{t+1}" for t in range(n_tasks)])
+    plt.ylim(0.0, 1.0)
+    plt.xlabel("After training task")
+    plt.ylabel("Accuracy on task")
+    plt.title("Graphene ML forgetting curve on CIFAR-10 split (Controlled edge-plasticity, safe update + EWC + Replay)")
+    plt.legend(loc="lower left", fontsize=8)
+    plt.grid(True, alpha=0.3)
+    plt.show()
 
 if __name__ == "__main__":
     main()
